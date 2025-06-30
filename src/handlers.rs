@@ -22,8 +22,12 @@ pub async fn generate_keypair() -> ResponseJson<ApiResponse<KeypairResponse>> {
 }
 
 pub async fn create_token(
-    Json(req): Json<CreateTokenRequest>,
+    payload: Result<Json<CreateTokenRequest>, axum::extract::rejection::JsonRejection>,
 ) -> ResponseJson<ApiResponse<InstructionResponse>> {
+    let req = match payload {
+        Ok(Json(req)) => req,
+        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+    };
     // Validate inputs
     let _mint_authority = match Pubkey::from_str(&req.mint_authority) {
         Ok(pk) => pk,
@@ -65,8 +69,12 @@ pub async fn create_token(
 }
 
 pub async fn mint_token(
-    Json(req): Json<MintTokenRequest>,
+    payload: Result<Json<MintTokenRequest>, axum::extract::rejection::JsonRejection>,
 ) -> ResponseJson<ApiResponse<InstructionResponse>> {
+    let req = match payload {
+        Ok(Json(req)) => req,
+        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+    };
     // Validate inputs
     let mint = match Pubkey::from_str(&req.mint) {
         Ok(pk) => pk,
@@ -115,8 +123,12 @@ pub async fn mint_token(
 }
 
 pub async fn sign_message(
-    Json(req): Json<SignMessageRequest>,
+    payload: Result<Json<SignMessageRequest>, axum::extract::rejection::JsonRejection>,
 ) -> ResponseJson<ApiResponse<SignMessageResponse>> {
+    let req = match payload {
+        Ok(Json(req)) => req,
+        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+    };
     // Validate and decode secret key
     let secret_bytes = match bs58::decode(&req.secret).into_vec() {
         Ok(bytes) => bytes,
@@ -147,8 +159,12 @@ pub async fn sign_message(
 }
 
 pub async fn verify_message(
-    Json(req): Json<VerifyMessageRequest>,
+    payload: Result<Json<VerifyMessageRequest>, axum::extract::rejection::JsonRejection>,
 ) -> ResponseJson<ApiResponse<VerifyMessageResponse>> {
+    let req = match payload {
+        Ok(Json(req)) => req,
+        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+    };
     // Validate and decode public key
     let pubkey_bytes = match bs58::decode(&req.pubkey).into_vec() {
         Ok(bytes) => bytes,
@@ -196,8 +212,12 @@ pub async fn verify_message(
 }
 
 pub async fn send_sol(
-    Json(req): Json<SendSolRequest>,
+    payload: Result<Json<SendSolRequest>, axum::extract::rejection::JsonRejection>,
 ) -> ResponseJson<ApiResponse<InstructionResponse>> {
+    let req = match payload {
+        Ok(Json(req)) => req,
+        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+    };
     // Validate inputs
     let from = match Pubkey::from_str(&req.from) {
         Ok(pk) => pk,
@@ -241,8 +261,12 @@ pub async fn send_sol(
 }
 
 pub async fn send_token(
-    Json(req): Json<SendTokenRequest>,
+    payload: Result<Json<SendTokenRequest>, axum::extract::rejection::JsonRejection>,
 ) -> ResponseJson<ApiResponse<InstructionResponse>> {
+    let req = match payload {
+        Ok(Json(req)) => req,
+        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+    };
     // Validate inputs
     let destination = match Pubkey::from_str(&req.destination) {
         Ok(pk) => pk,
