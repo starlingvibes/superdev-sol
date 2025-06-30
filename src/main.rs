@@ -26,7 +26,12 @@ async fn main() {
         .route("/send/token", post(send_token));
 
     // Start the server
-    let addr = SocketAddr::from(([127, 0, 0, 1], 10000));
+    let port = std::env::var("PORT")
+        .unwrap_or_else(|_| "10000".to_string())
+        .parse::<u16>()
+        .expect("PORT must be a valid number");
+    
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = TcpListener::bind(&addr).await.unwrap();
     println!("🚀 Solana HTTP Server running at http://{}", addr);
     
