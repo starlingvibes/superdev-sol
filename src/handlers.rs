@@ -1,4 +1,4 @@
-use axum::{extract::Json, response::Json as ResponseJson};
+use axum::{extract::Json, response::Json as ResponseJson, http::StatusCode};
 use ed25519_dalek::{Signer, Verifier, SigningKey, VerifyingKey, Signature};
 use rand::rngs::OsRng;
 use solana_sdk::pubkey::Pubkey;
@@ -10,7 +10,7 @@ use crate::types::*;
 const SPL_TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
 
-pub async fn generate_keypair() -> ResponseJson<ApiResponse<KeypairResponse>> {
+pub async fn generate_keypair() -> (StatusCode, ResponseJson<ApiResponse<KeypairResponse>>) {
     let signing_key = SigningKey::generate(&mut OsRng);
     let verifying_key = signing_key.verifying_key();
     
@@ -18,25 +18,25 @@ pub async fn generate_keypair() -> ResponseJson<ApiResponse<KeypairResponse>> {
     let secret = bs58::encode(signing_key.as_bytes()).into_string();
     
     let response = KeypairResponse { pubkey, secret };
-    ResponseJson(ApiResponse::success(response))
+    (StatusCode::OK, ResponseJson(ApiResponse::success(response)))
 }
 
 pub async fn create_token(
     payload: Result<Json<CreateTokenRequest>, axum::extract::rejection::JsonRejection>,
-) -> ResponseJson<ApiResponse<InstructionResponse>> {
+) -> (StatusCode, ResponseJson<ApiResponse<InstructionResponse>>) {
     let req = match payload {
         Ok(Json(req)) => req,
-        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Missing required fields".to_string()))),
     };
     // Validate inputs
     let _mint_authority = match Pubkey::from_str(&req.mint_authority) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid mint authority public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid mint authority public key".to_string()))),
     };
     
     let mint = match Pubkey::from_str(&req.mint) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid mint public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid mint public key".to_string()))),
     };
 
     // Create mock instruction for initialize mint
@@ -65,30 +65,30 @@ pub async fn create_token(
         instruction_data,
     };
 
-    ResponseJson(ApiResponse::success(response))
+    (StatusCode::OK, ResponseJson(ApiResponse::success(response)))
 }
 
 pub async fn mint_token(
     payload: Result<Json<MintTokenRequest>, axum::extract::rejection::JsonRejection>,
-) -> ResponseJson<ApiResponse<InstructionResponse>> {
+) -> (StatusCode, ResponseJson<ApiResponse<InstructionResponse>>) {
     let req = match payload {
         Ok(Json(req)) => req,
-        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Missing required fields".to_string()))),
     };
     // Validate inputs
     let mint = match Pubkey::from_str(&req.mint) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid mint public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid mint public key".to_string()))),
     };
     
     let destination = match Pubkey::from_str(&req.destination) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid destination public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid destination public key".to_string()))),
     };
     
     let authority = match Pubkey::from_str(&req.authority) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid authority public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid authority public key".to_string()))),
     };
 
     let accounts = vec![
@@ -119,24 +119,24 @@ pub async fn mint_token(
         instruction_data: BASE64.encode(instruction_data),
     };
 
-    ResponseJson(ApiResponse::success(response))
+    (StatusCode::OK, ResponseJson(ApiResponse::success(response)))
 }
 
 pub async fn sign_message(
     payload: Result<Json<SignMessageRequest>, axum::extract::rejection::JsonRejection>,
-) -> ResponseJson<ApiResponse<SignMessageResponse>> {
+) -> (StatusCode, ResponseJson<ApiResponse<SignMessageResponse>>) {
     let req = match payload {
         Ok(Json(req)) => req,
-        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Missing required fields".to_string()))),
     };
     // Validate and decode secret key
     let secret_bytes = match bs58::decode(&req.secret).into_vec() {
         Ok(bytes) => bytes,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid secret key format".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid secret key format".to_string()))),
     };
 
     if secret_bytes.len() != 32 {
-        return ResponseJson(ApiResponse::error("Invalid secret key length".to_string()));
+        return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid secret key length".to_string())));
     }
 
     let mut secret_array = [0u8; 32];
@@ -155,24 +155,24 @@ pub async fn sign_message(
         message: req.message,
     };
 
-    ResponseJson(ApiResponse::success(response))
+    (StatusCode::OK, ResponseJson(ApiResponse::success(response)))
 }
 
 pub async fn verify_message(
     payload: Result<Json<VerifyMessageRequest>, axum::extract::rejection::JsonRejection>,
-) -> ResponseJson<ApiResponse<VerifyMessageResponse>> {
+) -> (StatusCode, ResponseJson<ApiResponse<VerifyMessageResponse>>) {
     let req = match payload {
         Ok(Json(req)) => req,
-        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Missing required fields".to_string()))),
     };
     // Validate and decode public key
     let pubkey_bytes = match bs58::decode(&req.pubkey).into_vec() {
         Ok(bytes) => bytes,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid public key format".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid public key format".to_string()))),
     };
 
     if pubkey_bytes.len() != 32 {
-        return ResponseJson(ApiResponse::error("Invalid public key length".to_string()));
+        return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid public key length".to_string())));
     }
 
     let mut pubkey_array = [0u8; 32];
@@ -180,17 +180,17 @@ pub async fn verify_message(
 
     let verifying_key = match VerifyingKey::from_bytes(&pubkey_array) {
         Ok(vk) => vk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid public key".to_string()))),
     };
 
     // Decode signature
     let signature_bytes = match BASE64.decode(&req.signature) {
         Ok(bytes) => bytes,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid signature format".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid signature format".to_string()))),
     };
 
     if signature_bytes.len() != 64 {
-        return ResponseJson(ApiResponse::error("Invalid signature length".to_string()));
+        return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid signature length".to_string())));
     }
 
     let mut signature_array = [0u8; 64];
@@ -208,29 +208,29 @@ pub async fn verify_message(
         pubkey: req.pubkey,
     };
 
-    ResponseJson(ApiResponse::success(response))
+    (StatusCode::OK, ResponseJson(ApiResponse::success(response)))
 }
 
 pub async fn send_sol(
     payload: Result<Json<SendSolRequest>, axum::extract::rejection::JsonRejection>,
-) -> ResponseJson<ApiResponse<InstructionResponse>> {
+) -> (StatusCode, ResponseJson<ApiResponse<InstructionResponse>>) {
     let req = match payload {
         Ok(Json(req)) => req,
-        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Missing required fields".to_string()))),
     };
     // Validate inputs
     let from = match Pubkey::from_str(&req.from) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid sender public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid sender public key".to_string()))),
     };
     
     let to = match Pubkey::from_str(&req.to) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid recipient public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid recipient public key".to_string()))),
     };
 
     if req.lamports == 0 {
-        return ResponseJson(ApiResponse::error("Amount must be greater than 0".to_string()));
+        return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Amount must be greater than 0".to_string())));
     }
 
     // Create transfer instruction accounts
@@ -257,34 +257,34 @@ pub async fn send_sol(
         instruction_data: BASE64.encode(instruction_data),
     };
 
-    ResponseJson(ApiResponse::success(response))
+    (StatusCode::OK, ResponseJson(ApiResponse::success(response)))
 }
 
 pub async fn send_token(
     payload: Result<Json<SendTokenRequest>, axum::extract::rejection::JsonRejection>,
-) -> ResponseJson<ApiResponse<InstructionResponse>> {
+) -> (StatusCode, ResponseJson<ApiResponse<InstructionResponse>>) {
     let req = match payload {
         Ok(Json(req)) => req,
-        Err(_) => return ResponseJson(ApiResponse::error("Missing required fields".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Missing required fields".to_string()))),
     };
     // Validate inputs
     let destination = match Pubkey::from_str(&req.destination) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid destination public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid destination public key".to_string()))),
     };
     
     let _mint = match Pubkey::from_str(&req.mint) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid mint public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid mint public key".to_string()))),
     };
     
     let owner = match Pubkey::from_str(&req.owner) {
         Ok(pk) => pk,
-        Err(_) => return ResponseJson(ApiResponse::error("Invalid owner public key".to_string())),
+        Err(_) => return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Invalid owner public key".to_string()))),
     };
 
     if req.amount == 0 {
-        return ResponseJson(ApiResponse::error("Amount must be greater than 0".to_string()));
+        return (StatusCode::BAD_REQUEST, ResponseJson(ApiResponse::error("Amount must be greater than 0".to_string())));
     }
 
     // For SPL token transfers, we need source token account
@@ -319,5 +319,5 @@ pub async fn send_token(
         instruction_data: BASE64.encode(instruction_data),
     };
 
-    ResponseJson(ApiResponse::success(response))
+    (StatusCode::OK, ResponseJson(ApiResponse::success(response)))
 }
